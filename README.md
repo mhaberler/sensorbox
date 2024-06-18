@@ -101,6 +101,12 @@ all features except airspace lookup
 - [ArduinoJson](https://arduinojson.org/) by  Benoît Blanchon
 - an embedded version of [PMTiles](https://github.com/protomaps/PMTiles) by, and with the help of Brandon Liu
 
+
+## build instructions
+
+- `git clone --recursive https://github.com/mhaberler/flight-display.git`
+- select target & build
+
 ## Hardware setup
 
 todo
