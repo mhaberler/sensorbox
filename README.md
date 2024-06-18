@@ -107,6 +107,8 @@ all features except airspace lookup
 - `git clone --recursive https://github.com/mhaberler/flight-display.git`
 - select target & build
 
+- to build with hilmar-ekf: uncomment 
+
 ## Hardware setup
 
 todo
