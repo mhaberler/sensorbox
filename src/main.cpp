@@ -146,7 +146,7 @@ void setup() {
     setup_queues();
     settings_setup();
     webserver_setup();
-    // ntp_setup();
+    ntp_setup();
 
 #ifdef DEM_SUPPORT
     dem_setup(SD, "/dem");
