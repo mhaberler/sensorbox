@@ -25,8 +25,10 @@ static int32_t track_count;
 static uint32_t track_now;
 static float max_rate;
 
+#if defined(FLOWSENSOR) || defined(QUADRATURE_DECODER)
 uint8_t flowsensor_A = PIN_FLOWSENSOR_A;
 uint8_t flowsensor_B = PIN_FLOWSENSOR_B;
+#endif
 
 void flow_setup(void) {
 #ifdef FLOWSENSOR

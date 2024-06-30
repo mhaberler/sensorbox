@@ -37,6 +37,7 @@ void irq_setup(void);
 bool nfc_reader_present(void);
 void battery_check(void);
 void flow_report(bool force);
+void ntp_setup();
 
 ::WiFiServer mqtt_tcp_server(MQTT_TCP);
 ::WiFiServer mqtt_ws_server(MQTT_WS);
@@ -76,7 +77,7 @@ void setup() {
     RGBLED(64,0,0);
 
 
-#if defined(ARDUINO_M5STACK_CORES3) ||  defined(ARDUINO_M5STACK_Core2) 
+#if defined(ARDUINO_M5STACK_CORES3) ||  defined(ARDUINO_M5STACK_Core2)
     Wire.begin();
     Wire.setClock(I2C_100K);
 #if defined(I2C1_SDA)
@@ -107,10 +108,10 @@ void setup() {
 
 #endif
 
-// #if defined(ARDUINO_M5Stack_ATOMS3)
-//     Wire1.begin(I2C1_SDA, I2C1_SCL, I2C1_SPEED);
-//     i2c_scan(Wire1);
-// #endif
+    // #if defined(ARDUINO_M5Stack_ATOMS3)
+    //     Wire1.begin(I2C1_SDA, I2C1_SCL, I2C1_SPEED);
+    //     i2c_scan(Wire1);
+    // #endif
 
 #if defined(DEVKITC) || defined(M5STAMP_C3U) || defined(ARDUINO_M5Stack_ATOMS3) || defined(ARDUINO_M5Stack_StampS3)
 #if defined(I2C0_SDA)
@@ -145,6 +146,7 @@ void setup() {
     setup_queues();
     settings_setup();
     webserver_setup();
+    // ntp_setup();
 
 #ifdef DEM_SUPPORT
     dem_setup(SD, "/dem");
