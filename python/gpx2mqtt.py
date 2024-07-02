@@ -2,7 +2,7 @@ import gpxpy
 import paho.mqtt.client as mqtt
 import time
 import math
-import sys
+import json
 
 # Configuration
 gpx_file = 'track.gpx' #  GPX file
@@ -72,7 +72,8 @@ def publish_track_points(gpx, client):
                 if course:
                     payload['course'] = round(course,2)
 
-                client.publish(MQTT_TOPIC, str(payload))
+                msg = json.dumps(payload, ensure_ascii=False).encode('utf8')
+                client.publish(MQTT_TOPIC, msg)
                 # print(f"Published: {payload}")
                 time.sleep(delay)  # Delay to simulate real-time publishing
                 previous_point = point
