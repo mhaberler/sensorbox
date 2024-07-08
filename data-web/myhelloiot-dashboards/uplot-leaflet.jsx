@@ -3,14 +3,14 @@
     <Card title="Map">
 
         <LeafletUnit
-            topic="gps/nav"
+            subtopic="gps/trackpoints"
         />
     </Card>
 
     <Card title="Time series">
 
         <UplotUnit
-            topic="baro/baro-0"
+            subtopic="baro/baro-0"
 
         />
     </Card>

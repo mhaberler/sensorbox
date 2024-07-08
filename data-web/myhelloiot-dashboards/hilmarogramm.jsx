@@ -1,13 +1,24 @@
 <DashboardPage>
 
-    <Card title="Hilmarogramm">
+    <Card title="speed/elevation">
 
         <ScatterplotUnit
             subtopic="gpx/trackpoints"
             subconvert={JSONConvert(value => [value["speed"],value["ele"]])}
-            
-            width={700}
-            height={400}
+
+        />
+    </Card>
+    <Card title="course/elevation">
+
+       <ScatterplotUnit
+            subtopic="gpx/trackpoints"
+            subconvert={JSONConvert(value => [value["course"],value["ele"]])}
+
         />
     </Card>
 </DashboardPage >
+
+{
+
+
+}
