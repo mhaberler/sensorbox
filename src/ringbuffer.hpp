@@ -13,7 +13,7 @@ class RingBuffer {
 
     void create(size_t sz, RingbufferType_t type, UBaseType_t cap = MALLOC_CAP_INTERNAL) {
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 1)
-        h =  xRingbufferCreateWithCaps(sz, type, cap): // >=5.2.1
+        h =  xRingbufferCreateWithCaps(sz, type, cap); // >=5.2.1
 #else
         h = xRingbufferCreate(sz, type);
 #endif
