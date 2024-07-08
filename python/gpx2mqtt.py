@@ -9,7 +9,7 @@ gpx_file = 'track.gpx' #  GPX file
 MQTT_BROKER = 'localhost'  # MQTT broker address
 MQTT_PORT = 1883  # MQTT broker port
 MQTT_TOPIC = 'gpx/trackpoints'  # MQTT topic
-delay = 0.1  # between publishing track points
+delay = 0.2  # between publishing track points
 
 # Haversine formula to calculate distance between two points on the Earth
 def haversine(lat1, lon1, lat2, lon2):
