@@ -14,3 +14,4 @@ data-web/imu3d-experimental/dist
 data
 .pioenvs
 .piolibdeps
+node_modules

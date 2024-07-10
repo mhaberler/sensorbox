@@ -121,10 +121,10 @@ void setup_ble(void) {
     pBLEScan->setDuplicateFilter(false);
     pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
 
-    pBLEScan->start(Scan_duration, false);
-
-    run_activeScan = true; // first time around - active scan
-    RUNTICKER(activeScan);
+    // pBLEScan->start(Scan_duration, false);
+pBLEScan->start(0, false);
+    // run_activeScan = true; // first time around - active scan
+    // RUNTICKER(activeScan);
 }
 
 void bleDeliver(JsonObject &BLEdata) {

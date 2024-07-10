@@ -6,8 +6,6 @@
 #endif
 
 #include <Wire.h>
-#include <PicoMQTT.h>
-#include <PicoWebsocket.h>
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
 #include "tickers.hpp"
@@ -21,6 +19,7 @@
 #include "settings.hpp"
 #include "fmicro.h"
 #include "pindefs.h"
+#include "broker.hpp"
 
 #if __has_include("myconfig.h")
     #include "myconfig.h"
@@ -42,7 +41,9 @@ void ntp_setup();
 ::WiFiServer mqtt_tcp_server(MQTT_TCP);
 ::WiFiServer mqtt_ws_server(MQTT_WS);
 PicoWebsocket::Server<::WiFiServer> websocket_server(mqtt_ws_server);
-PicoMQTT::Server mqtt(mqtt_tcp_server, websocket_server);
+
+
+CustomMQTTServer::Server mqtt(mqtt_tcp_server, websocket_server);
 
 TICKER(internal, INTERVAL);
 TICKER(deadman, DEADMAN_INTERVAL);

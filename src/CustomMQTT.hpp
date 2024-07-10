@@ -1,5 +1,4 @@
 #pragma once
-
 #include <PicoMQTT.h>
 #include <PicoWebsocket.h>
 
@@ -18,5 +17,3 @@ class CustomMQTTServer: public PicoMQTT::Server {
         log_i("client %s unsubscribed %s", client_id, topic);
     }
 };
-
-extern CustomMQTTServer::Server mqtt;
