@@ -107,11 +107,11 @@ all features except airspace lookup
 - `git clone --recursive https://github.com/mhaberler/flight-display.git`
 - select target & build
 
-- to build with hilmar-ekf: uncomment 
+- to build without hilmar-ekf: comment  `    https://github.com/BalloonWare/hilmar-ekf.git`and comment out the `-DEKF` define in platformio.ini
 
 ## Hardware setup
 
-todo
+see src/pindefs.h
 
 ## Client Test Results
 
