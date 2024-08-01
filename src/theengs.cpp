@@ -11,6 +11,9 @@
 
 #include "NimBLEDevice.h"
 #include "decoder.h"
+#include <algorithm>
+#include <cctype>
+#include <string>
 
 // snarfed from OpenMQTT Gateway
 #ifndef BLEScanInterval
@@ -71,8 +74,7 @@ class scanCallbacks: public  NimBLEScanCallbacks {
             free(manufacturerdata);
         }
 
-        if (advertisedDevice->haveRSSI())
-            BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
+        BLEdata["rssi"] = (int)advertisedDevice->getRSSI();
 
         if (advertisedDevice->haveTXPower())
             BLEdata["txpower"] = (int8_t)advertisedDevice->getTXPower();
@@ -122,7 +124,7 @@ void setup_ble(void) {
     pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
 
     // pBLEScan->start(Scan_duration, false);
-pBLEScan->start(0, false);
+    pBLEScan->start(0, false);
     // run_activeScan = true; // first time around - active scan
     // RUNTICKER(activeScan);
 }
@@ -140,8 +142,13 @@ void bleDeliver(JsonObject &BLEdata) {
         if (BLEdata.containsKey("volt")) {
             BLEdata["batt"] = volt2percent(BLEdata["volt"].as<float>());
         }
-        NimBLEAddress mac = NimBLEAddress(BLEdata["id"].as<std::string>());
-        auto publish = mqtt.begin_publish(bleTopic(mac), measureJson(BLEdata));
+        std::string mac{BLEdata["id"].as<const char *>()};
+        mac.erase(std::remove(mac.begin(), mac.end(), ':'), mac.end());
+        std::transform(mac.begin(), mac.end(), mac.begin(),
+        [](unsigned char c) {
+            return std::tolower(c);
+        });
+        auto publish = mqtt.begin_publish(("ble/" + mac).c_str(), measureJson(BLEdata));
         serializeJson(BLEdata, publish);
         publish.send();
     }

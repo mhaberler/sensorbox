@@ -9,4 +9,3 @@
 #define round6(x) (round((x)*1.0e6) / 1.0e6)
 
 uint8_t volt2percent(const float volt);
-const String bleTopic(const NimBLEAddress &mac);

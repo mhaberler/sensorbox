@@ -13,13 +13,3 @@ uint8_t volt2percent(const float v) {
     return (uint8_t) percent;
 }
 
-const String bleTopic(const NimBLEAddress &mac) {
-    String buffer;
-    buffer.reserve(32);
-    const uint8_t* m_address = mac.getNative();
-    buffer = "ble/";
-    for (int i = 5; i > -1; i--) {
-        buffer += String(m_address[i], HEX);
-    }
-    return buffer;
-}

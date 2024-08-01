@@ -7,3 +7,9 @@
 [submodule "data-web/Vue-Mqtt-Example"]
 	path = data-web/Vue-Mqtt-Example
 	url = https://github.com/mhaberler/Vue-Mqtt-Example.git
+[submodule "libwebp"]
+	path = libwebp
+	url = https://github.com/webmproject/libwebp.git
+[submodule "zlib"]
+	path = zlib
+	url = https://github.com/madler/zlib.git

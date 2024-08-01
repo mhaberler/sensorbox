@@ -19,7 +19,25 @@
 #include "settings.hpp"
 #include "fmicro.h"
 #include "pindefs.h"
-#include "broker.hpp"
+//#include "broker.hpp"
+#include <PicoMQTT.h>
+#include <PicoWebsocket.h>
+
+class CustomMQTTServer: public PicoMQTT::Server {
+  protected:
+    void on_connected(const char * client_id) override {
+        log_i("client %s connected", client_id);
+    }
+    virtual void on_disconnected(const char * client_id) override {
+        log_i("client %s disconnected", client_id);
+    }
+    virtual void on_subscribe(const char * client_id, const char * topic) override {
+        log_i("client %s subscribed %s", client_id, topic);
+    }
+    virtual void on_unsubscribe(const char * client_id, const char * topic) override {
+        log_i("client %s unsubscribed %s", client_id, topic);
+    }
+};
 
 #if __has_include("myconfig.h")
     #include "myconfig.h"
@@ -43,7 +61,9 @@ void ntp_setup();
 PicoWebsocket::Server<::WiFiServer> websocket_server(mqtt_ws_server);
 
 
-CustomMQTTServer::Server mqtt(mqtt_tcp_server, websocket_server);
+//CustomMQTTServer mqtt(mqtt_tcp_server);
+// CustomMQTTServer mqtt(mqtt_tcp_server, websocket_server);
+PicoMQTT::Server mqtt(mqtt_tcp_server, websocket_server);
 
 TICKER(internal, INTERVAL);
 TICKER(deadman, DEADMAN_INTERVAL);
@@ -166,7 +186,7 @@ void setup() {
         uint32_t new_interval = strtoul (payload, NULL, 0);
         if (new_interval  > MIN_INTERVAL) {
             CHANGE_TICKER(internal, new_interval);
-            Serial.printf("changed ticker to %u ms\n", new_interval);
+            log_i("changed ticker to %u ms", new_interval);
         }
     });
     mqtt.subscribe("system/reboot",  [](const char * topic, const char * payload) {
