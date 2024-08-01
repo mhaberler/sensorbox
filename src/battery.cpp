@@ -10,7 +10,7 @@
 
 void battery_check(void) {
 
-#ifdef M5UNIFIED && (defined(ARDUINO_M5STACK_CORES3) ||  defined(ARDUINO_M5STACK_Core2))
+#if defined(M5UNIFIED) && (defined(ARDUINO_M5STACK_CORES3) ||  defined(ARDUINO_M5STACK_Core2))
     JsonDocument json;
     json["time"] = fseconds();
 

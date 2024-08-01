@@ -1,3 +1,6 @@
+#ifndef PSYCHIC_HTTP
+
+
 #ifndef esp_fs_webserver_H
 #define esp_fs_webserver_H
 
@@ -70,9 +73,24 @@
     #if ESP_FS_WS_USE_MDNS
         #include <ESPmDNS.h>
     #endif
-    #include <HTTPUpdateServer.h>
-    #include <WebServer.h>
-    using WebServerClass = WebServer;
+    #ifdef PSYCHIC_HTTP
+        #include <PsychicHttp.h>
+        #if CONFIG_ESP_HTTPS_SERVER_ENABLE
+            #include <PsychicHttpsServer.h> //uncomment this to enable HTTPS / SSL
+        #endif
+        //our main server object
+        #ifdef CONFIG_ESP_HTTPS_SERVER_ENABLE
+            PsychicHttpsServer server;
+        #else
+            PsychicHttpServer server;
+        #endif
+        PsychicWebSocketHandler websocketHandler;
+        PsychicEventSource eventSource;
+    #else
+        #include <HTTPUpdateServer.h>
+        #include <WebServer.h>
+        using WebServerClass = WebServer;
+    #endif
 #endif
 
 #include <DNSServer.h>
@@ -99,14 +117,14 @@ enum {
 // an SD card was found and is mounted
 extern bool sdcard_available;
 
-class FSWebServer : public WebServerClass {
+class FSWebServer : public PsychicHttpServer {
     using CallbackF         = std::function<void(void)>;
     using FsInfoCallbackF   = std::function<void(fsInfo_t*)>;
 
   public:
 
     FSWebServer(fs::FS& fs, uint16_t port = 80, const char* host = "esphost"):
-        WebServerClass(port),
+        PsychicHttpServer(port),
         m_filesystem(&fs),
         m_host(host) {
         setup = new SetupConfigurator(m_filesystem);
@@ -368,4 +386,5 @@ class FSWebServer : public WebServerClass {
 };
 
 
+#endif
 #endif

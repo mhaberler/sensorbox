@@ -21,8 +21,9 @@
 #include "pindefs.h"
 //#include "broker.hpp"
 #include <PicoMQTT.h>
+#ifndef PSYCHIC_HTTP
 #include <PicoWebsocket.h>
-
+#endif
 class CustomMQTTServer: public PicoMQTT::Server {
   protected:
     void on_connected(const char * client_id) override {
@@ -56,6 +57,9 @@ void battery_check(void);
 void flow_report(bool force);
 void ntp_setup();
 
+
+#ifndef PSYCHIC_HTTP
+
 ::WiFiServer mqtt_tcp_server(MQTT_TCP);
 ::WiFiServer mqtt_ws_server(MQTT_WS);
 PicoWebsocket::Server<::WiFiServer> websocket_server(mqtt_ws_server);
@@ -64,6 +68,9 @@ PicoWebsocket::Server<::WiFiServer> websocket_server(mqtt_ws_server);
 //CustomMQTTServer mqtt(mqtt_tcp_server);
 // CustomMQTTServer mqtt(mqtt_tcp_server, websocket_server);
 PicoMQTT::Server mqtt(mqtt_tcp_server, websocket_server);
+#else
+extern PicoMQTT::Server mqtt;
+#endif
 
 TICKER(internal, INTERVAL);
 TICKER(deadman, DEADMAN_INTERVAL);

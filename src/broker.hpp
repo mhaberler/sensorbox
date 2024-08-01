@@ -1,7 +1,9 @@
 #pragma once
 
 #include <PicoMQTT.h>
+#ifndef PSYCHIC_HTTP
 #include <PicoWebsocket.h>
+#endif
 
 class CustomMQTTServer: public PicoMQTT::Server {
   protected:

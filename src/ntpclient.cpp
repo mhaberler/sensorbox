@@ -8,16 +8,16 @@ NTPClient timeClient (udp, NTP_POOL);
 int64_t timeSinceEpoch;
 int64_t millis_offset;
 
-extern FSWebServer myWebServer;
+// extern FSWebServer myWebServer;
 
 
 void ntp_setup() {
-    if (!myWebServer.getAPMode()) {
+    // if (!myWebServer.getAPMode()) {
         timeClient.forceUpdate();
         timeSinceEpoch = ((int64_t)timeClient.getEpochTime ()) * 1000;
         millis_offset = timeSinceEpoch - millis();
         timeClient.end();
         time_t tmp = millis_offset / 1000;
         log_i("NTP reftime=%s", ctime (&tmp));
-    }
+    // }
 }

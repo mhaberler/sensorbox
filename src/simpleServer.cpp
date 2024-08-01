@@ -1,3 +1,6 @@
+#ifndef PSYCHIC_HTTP
+
+
 #include <esp-fs-webserver.h>  // https://github.com/cotestatnt/esp-fs-webserver
 
 #include <FS.h>
@@ -143,3 +146,5 @@ void webserver_setup() {
 void webserver_loop() {
     myWebServer.run();
 }
+
+#endif

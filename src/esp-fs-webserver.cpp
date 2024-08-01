@@ -1,3 +1,5 @@
+#ifndef PSYCHIC_HTTP
+
 #include "esp-fs-webserver.h"
 #include "detail/RequestHandlersImpl.h"
 #if ESP_FS_WS_USE_SD
@@ -1232,3 +1234,5 @@ bool FSWebServer::sendWebSocket(uint8_t num, const char* payload) {
 
 #endif
 ///////////////////////////   WEBSOCKET  ///////////////////////////////////
+
+#endif
