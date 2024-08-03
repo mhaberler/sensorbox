@@ -40,7 +40,7 @@ void webserver_setup() {
         delay(100);
     }
 
-    MDNS.begin("picomqtt");
+    MDNS.begin("sensorbox");
 
     Serial.println(WiFi.localIP());
 
