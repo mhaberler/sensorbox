@@ -8,8 +8,8 @@
 #include <PsychicHttp.h>
 
 #ifdef CONFIG_ESP_HTTPS_SERVER_ENABLE
-#include <LittleFS.h>
-#include <PsychicHttpsServer.h>
+    #include <LittleFS.h>
+    #include <PsychicHttpsServer.h>
 #endif
 
 
@@ -17,17 +17,18 @@
 #include "shifting_buffer_proxy.h"
 
 #ifdef CONFIG_ESP_HTTPS_SERVER_ENABLE
-String server_cert;
-String server_key;
-PsychicHttpsServer server;
+    String server_cert;
+    String server_key;
+    PsychicHttpsServer server;
 #else
-PsychicHttpServer server;
+    PsychicHttpServer server;
 #endif
 
 PsychicWebSocketProxy::Server websocket_handler([] { return new PsychicWebSocketProxy::ShiftingBufferProxy<1024>(); });
 
-::WiFiServer tcp_server(1883);
+::WiFiServer tcp_server(MQTT_TCP);
 PicoMQTT::Server mqtt(tcp_server, websocket_handler);
+static MDNSResponder *mdns_responder;
 
 void webserver_setup() {
 
@@ -40,8 +41,23 @@ void webserver_setup() {
         delay(100);
     }
 
-    MDNS.begin("sensorbox");
-
+    // MDNS.begin("sensorbox");
+    if (!mdns_responder) {
+        mdns_responder = new MDNSResponder();
+    }
+    if (mdns_responder->begin(HOSTNAME)) {
+        log_i("MDNS responder started");
+        mdns_responder->addService("http", "tcp", HTTP_PORT);
+        mdns_responder->addService("https", "tcp", HTTPS_PORT);
+#ifdef MQTT_TCP
+        mdns_responder->addService("mqtt", "tcp", MQTT_TCP);
+#endif
+#ifdef MQTT_WS
+        mdns_responder->addService("mqtt-ws", "tcp", MQTT_WS);
+        mdns_responder->addService("mqtt-wss", "tcp", HTTPS_PORT);
+#endif
+        // mdns_responder->enableWorkstation(ESP_IF_WIFI_STA);
+    }
     Serial.println(WiFi.localIP());
 
     {
@@ -60,9 +76,9 @@ void webserver_setup() {
     }
     log_e("crt='%s' key='%s'", server_cert.c_str(), server_key.c_str());
 #ifdef CONFIG_ESP_HTTPS_SERVER_ENABLE
-    server.listen(443, server_cert.c_str(), server_key.c_str());
+    server.listen(HTTPS_PORT, server_cert.c_str(), server_key.c_str());
 #else
-    server.listen(80);
+    server.listen(HTTP_PORT);
 #endif
 
     websocket_handler.setSubprotocol("mqtt");
@@ -85,16 +101,6 @@ uint32_t last, counter;
 
 void webserver_loop() {
     mqtt.loop();
-    // if (millis() - last > 1000) {
-    //     last = millis();
-    //     char buf[100];
-    //     itoa(counter++, buf, 10);
-    //     mqtt.publish("counter", buf );
-    //     itoa(ESP.getFreeHeap(), buf, 10);
-    //     mqtt.publish("freeheap", buf );
-    //     itoa(ESP.getPsramSize() - ESP.getFreePsram(), buf, 10);
-    //     mqtt.publish("psramusage", buf );
-    // }
 }
 
 

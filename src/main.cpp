@@ -231,6 +231,7 @@ void loop() {
     if (TIME_FOR(internal)) {
         mqtt.publish("system/interval", String(internal_update_ms));
         mqtt.publish("system/free-heap", String(ESP.getFreeHeap()));
+        mqtt.publish("system/psram-usage", String(ESP.getPsramSize() - ESP.getFreePsram()));
         mqtt.publish("system/reboot", "0");
         mqtt.publish("baro/reinit", "-1");
 #ifdef NFC_SUPPORT
