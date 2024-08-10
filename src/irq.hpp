@@ -1,7 +1,7 @@
 #pragma once
 #include "stdint.h"
 #include "esp_attr.h"
-#include "FreeRTOS.h" 
+#include "freertos/FreeRTOS.h"
 #include "ringbuffer.hpp"
 
 typedef struct {
