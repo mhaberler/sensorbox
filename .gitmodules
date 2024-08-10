@@ -1,12 +1,3 @@
-[submodule "lib/arduino-xensiv-dps3xx"]
-	path = lib/arduino-xensiv-dps3xx
-	url = https://github.com/mhaberler/arduino-xensiv-dps3xx.git
-[submodule "lib/ESP32SSDP"]
-	path = lib/ESP32SSDP
-	url = https://github.com/mhaberler/ESP32SSDP.git
-[submodule "data-web/Vue-Mqtt-Example"]
-	path = data-web/Vue-Mqtt-Example
-	url = https://github.com/mhaberler/Vue-Mqtt-Example.git
 [submodule "libwebp"]
 	path = libwebp
 	url = https://github.com/webmproject/libwebp.git

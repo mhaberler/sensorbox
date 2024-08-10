@@ -16,3 +16,4 @@ data
 .piolibdeps
 node_modules
 build
+unused

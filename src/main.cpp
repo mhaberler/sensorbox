@@ -21,56 +21,75 @@
 #include "pindefs.h"
 //#include "broker.hpp"
 #include <PicoMQTT.h>
-#ifndef PSYCHIC_HTTP
-#include <PicoWebsocket.h>
-#endif
-class CustomMQTTServer: public PicoMQTT::Server {
-  protected:
-    void on_connected(const char * client_id) override {
-        log_i("client %s connected", client_id);
-    }
-    virtual void on_disconnected(const char * client_id) override {
-        log_i("client %s disconnected", client_id);
-    }
-    virtual void on_subscribe(const char * client_id, const char * topic) override {
-        log_i("client %s subscribed %s", client_id, topic);
-    }
-    virtual void on_unsubscribe(const char * client_id, const char * topic) override {
-        log_i("client %s unsubscribed %s", client_id, topic);
-    }
-};
+extern PicoMQTT::Server mqtt;
 
-#if __has_include("myconfig.h")
-    #include "myconfig.h"
-#endif
+#include <ESP32SvelteKit.h>
+#include <LightMqttSettingsService.h>
+#include <LightStateService.h>
+#include <PsychicHttpServer.h>
 
-size_t getArduinoLoopTaskStackSize(void) {
-    return CUSTOM_ARDUINO_LOOP_STACK_SIZE;
-}
-void webserver_setup(void);
-void webserver_loop(void);
+PsychicHttpServer server;
+
+ESP32SvelteKit esp32sveltekit(&server, 120);
+
+LightMqttSettingsService lightMqttSettingsService = LightMqttSettingsService(&server,
+    esp32sveltekit.getFS(),
+    esp32sveltekit.getSecurityManager());
+
+LightStateService lightStateService = LightStateService(&server,
+                                      esp32sveltekit.getSocket(),
+                                      esp32sveltekit.getSecurityManager(),
+                                      esp32sveltekit.getMqttClient(),
+                                      &lightMqttSettingsService);
+
+// #ifndef PSYCHIC_HTTP
+// #include <PicoWebsocket.h>
+// #endif
+// class CustomMQTTServer: public PicoMQTT::Server {
+//   protected:
+//     void on_connected(const char * client_id) override {
+//         log_i("client %s connected", client_id);
+//     }
+//     virtual void on_disconnected(const char * client_id) override {
+//         log_i("client %s disconnected", client_id);
+//     }
+//     virtual void on_subscribe(const char * client_id, const char * topic) override {
+//         log_i("client %s subscribed %s", client_id, topic);
+//     }
+//     virtual void on_unsubscribe(const char * client_id, const char * topic) override {
+//         log_i("client %s unsubscribed %s", client_id, topic);
+//     }
+// };
+
+// #if __has_include("myconfig.h")
+//     #include "myconfig.h"
+// #endif
+
+// size_t getArduinoLoopTaskStackSize(void) {
+//     return CUSTOM_ARDUINO_LOOP_STACK_SIZE;
+// }
 void sensor_setup(void);
 void sensor_loop(void);
 void irq_setup(void);
 bool nfc_reader_present(void);
 void battery_check(void);
 void flow_report(bool force);
-void ntp_setup();
+void broker_setup();
+void broker_loop();
+
+// #ifndef PSYCHIC_HTTP
+
+// ::WiFiServer mqtt_tcp_server(MQTT_TCP);
+// ::WiFiServer mqtt_ws_server(MQTT_WS);
+// PicoWebsocket::Server<::WiFiServer> websocket_server(mqtt_ws_server);
 
 
-#ifndef PSYCHIC_HTTP
-
-::WiFiServer mqtt_tcp_server(MQTT_TCP);
-::WiFiServer mqtt_ws_server(MQTT_WS);
-PicoWebsocket::Server<::WiFiServer> websocket_server(mqtt_ws_server);
-
-
-//CustomMQTTServer mqtt(mqtt_tcp_server);
-// CustomMQTTServer mqtt(mqtt_tcp_server, websocket_server);
-PicoMQTT::Server mqtt(mqtt_tcp_server, websocket_server);
-#else
-extern PicoMQTT::Server mqtt;
-#endif
+// //CustomMQTTServer mqtt(mqtt_tcp_server);
+// // CustomMQTTServer mqtt(mqtt_tcp_server, websocket_server);
+// PicoMQTT::Server mqtt(mqtt_tcp_server, websocket_server);
+// #else
+// extern PicoMQTT::Server mqtt;
+// #endif
 
 TICKER(internal, INTERVAL);
 TICKER(deadman, DEADMAN_INTERVAL);
@@ -171,10 +190,18 @@ void setup() {
     i2c_scan(Wire1);
 #endif
 #endif
+    // start ESP32-SvelteKit
+    esp32sveltekit.begin();
+
     setup_queues();
     settings_setup();
-    webserver_setup();
-    ntp_setup();
+    broker_setup();
+
+    // load the initial light settings
+    lightStateService.begin();
+    // start the light service
+    lightMqttSettingsService.begin();
+
 
 #ifdef DEM_SUPPORT
     dem_setup(SD, "/dem");
@@ -220,9 +247,9 @@ void loop() {
     mqtt.loop();
     // TOGGLE(TRIGGER3);
 
-    TOGGLE(TRIGGER1);
-    webserver_loop();
-    TOGGLE(TRIGGER1);
+    // TOGGLE(TRIGGER1);
+    // webserver_loop();
+    // TOGGLE(TRIGGER1);
 
     TOGGLE(TRIGGER2);
     sensor_loop();
