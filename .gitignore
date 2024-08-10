@@ -15,3 +15,4 @@ data
 .pioenvs
 .piolibdeps
 node_modules
+build
