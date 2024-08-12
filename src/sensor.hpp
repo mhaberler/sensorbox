@@ -34,6 +34,13 @@ typedef enum {
     SAMPLE_GPS,
 } sample_t;
 
+typedef enum {
+    DPS3XX_IDLE,
+    DPS3XX_TEMPERATURE,
+    DPS3XX_PRESSURE,
+    DPS3XX_ERRORED,
+} dps_mode_t;
+
 // extend status code from dps_config.h
 // #define DPS__SUCCEEDED 0
 // #define DPS__FAIL_UNKNOWN -1
@@ -78,7 +85,12 @@ typedef struct  {
     // per-instance tracking values
     float previous_alt;
     float previous_time;
+    float start_time; // time when conversion started
+    float temp_conversion_time;
+    float prs_conversion_time;
     uint32_t initial_alt_values;
+    dps_mode_t dps_mode;
+
 #ifdef EKF
     HKalF  *ekf; //  per-device EKF instance
 #endif

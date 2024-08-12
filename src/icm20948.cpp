@@ -13,6 +13,9 @@
 ICM_20948_I2C icm;
 
 #if defined(IMU_SUPPORT)
+void imu_loop(void) {
+    post_softirq(&imu_sensor);
+}
 
 bool icm20948_irq(icm20948_t *dev, const float &timestamp) {
     ICM_20948_Status_e ret;
@@ -27,6 +30,7 @@ bool icm20948_irq(icm20948_t *dev, const float &timestamp) {
             case ICM_20948_Stat_Ok:
             case ICM_20948_Stat_FIFOMoreDataAvail: {
                     if (measurements_queue->send_acquire((void **)&is, sz, 0) == pdTRUE) {
+                        dev->dev.i2caddr = timestamp;
                         is->dev = dev;
                         is->timestamp = timestamp;
                         is->type = SAMPLE_ORIENTATION;
@@ -46,7 +50,9 @@ bool icm20948_irq(icm20948_t *dev, const float &timestamp) {
                 ;
         }
     } while (ret == ICM_20948_Stat_FIFOMoreDataAvail);
-    dev->icm->clearInterrupts();
+    if (dev->dev.irq_pin) {
+        dev->icm->clearInterrupts();
+    }
     return true;
 }
 
@@ -105,26 +111,28 @@ bool imu_setup(icm20948_t *dev) {
         }
 
         delay(250);
+        if (dev->dev.irq_pin) {
+            pinMode(dev->dev.irq_pin, dev->dev.irq_pin_mode);
+            attachInterruptArg(digitalPinToInterrupt(dev->dev.irq_pin), irq_handler, (void *)dev, dev->dev.irq_pin_edge);
+            dev->dev.irq_attached = true;
+            // Active low to be compatible with the breakout board's pullup resistor
+            if ((ret = dev->icm->cfgIntActiveLow(true))  != ICM_20948_Stat_Ok) {
+                FAIL("cfgIntActiveLow: %d", ret);
+            }
+            // Push-pull, though open-drain would also work thanks to the pull-up resistors on the breakout
+            if ((ret = dev->icm->cfgIntOpenDrain(false))  != ICM_20948_Stat_Ok) {
+                FAIL("cfgIntOpenDrain: %d", ret);
+            }
+            // Latch the interrupt until cleared
+            if ((ret = dev->icm->cfgIntLatch(true))  != ICM_20948_Stat_Ok) {
+                FAIL("cfgIntLatch: %d", ret);
+            }
+            // enable DMP interrupts
+            if ((ret = dev->icm->intEnableDMP(true))  != ICM_20948_Stat_Ok) {
+                FAIL("intEnableDMP: %d", ret);
+            }
+        }
 
-        pinMode(dev->dev.irq_pin, dev->dev.irq_pin_mode);
-        attachInterruptArg(digitalPinToInterrupt(dev->dev.irq_pin), irq_handler, (void *)dev, dev->dev.irq_pin_edge);
-        dev->dev.irq_attached = true;
-
-        // Active low to be compatible with the breakout board's pullup resistor
-        if ((ret = dev->icm->cfgIntActiveLow(true))  != ICM_20948_Stat_Ok) {
-            FAIL("cfgIntActiveLow: %d", ret);
-        }
-        // Push-pull, though open-drain would also work thanks to the pull-up resistors on the breakout
-        if ((ret = dev->icm->cfgIntOpenDrain(false))  != ICM_20948_Stat_Ok) {
-            FAIL("cfgIntOpenDrain: %d", ret);
-        }
-        // Latch the interrupt until cleared
-        if ((ret = dev->icm->cfgIntLatch(true))  != ICM_20948_Stat_Ok) {
-            FAIL("cfgIntLatch: %d", ret);
-        }
-        if ((ret = dev->icm->intEnableDMP(true))  != ICM_20948_Stat_Ok) {
-            FAIL("intEnableDMP: %d", ret);
-        }
         if ((ret = dev->icm->resetDMP()) != ICM_20948_Stat_Ok) {
             FAIL("resetDMP: %d", ret);
         }

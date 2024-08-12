@@ -167,16 +167,16 @@ void setup() {
 #if defined(I2C1_SDA)
     Wire1.begin(I2C1_SDA, I2C1_SCL, I2C1_SPEED);
 #endif
-#if defined(DPS0_IRQ_PIN)
+#if DPS0_IRQ_PIN
     pinMode(DPS0_IRQ_PIN, INPUT_PULLUP);
 #endif
-#if defined(DPS1_IRQ_PIN)
+#if DPS1_IRQ_PIN
     pinMode(DPS1_IRQ_PIN, INPUT);
 #endif
-#if defined(DPS2_IRQ_PIN)
+#if DPS2_IRQ_PIN
     pinMode(DPS2_IRQ_PIN, INPUT_PULLUP);
 #endif
-#if defined(IMU_SUPPORT)
+#if IMU_IRQ_PIN
     pinMode(IMU_IRQ_PIN, INPUT_PULLUP);
 #endif
 #if defined(TRACE_PINS)

@@ -6,6 +6,14 @@
 #include "settings.hpp"
 #include "i2cio.hpp"
 #include "pindefs.h"
+#include "fmicro.h"
+
+void baro_loop(void) {
+    for (auto i = 0; i < num_dps_sensors; i++) {
+        post_softirq(&dps_sensors[i]);
+    }
+}
+
 
 bool dps368_irq(dps_sensors_t * dev, const float &timestamp) {
     float value;
@@ -80,10 +88,6 @@ static void dps368_deconfigure(const char *tag, dps_sensors_t *dev) {
         dev->dev.irq_attached = false;
     }
     if (dev->sensor) {
-        // if ((ret = dev->sensor->softReset()) != 0) {
-        //     log_e("%s: softReset: %d", dev->dev.topic, ret);
-        // }
-        // delay(100);
         log_e("%s: %s - sensor end()", tag, dev->dev.topic);
         dev->sensor->end();
         delay(100);
@@ -94,6 +98,9 @@ static void dps368_deconfigure(const char *tag, dps_sensors_t *dev) {
 int16_t dps368_setup(int i) {
     int16_t ret;
     dps_sensors_t *dev = &dps_sensors[i];
+    float temperature, pressure, tduration, pduration;
+    uint8_t num_failed;
+
     dev->dev.init_count++;
 
     if (!detect(*dev->wire, dev->dev.i2caddr)) {
@@ -113,18 +120,20 @@ int16_t dps368_setup(int i) {
         dev->sensor = new Dps3xx(); // first setup
     }
     // Dps3xx instance exists
-
-    log_i("init %s bus=%d addr=0x%x irq_pin=%u irq_pin_mode=%u edge=%d polarity=%u", dev->dev.topic,
+    log_i("init %s bus=%d addr=0x%x irq_pin=%u irq_pin_mode=%u edge=%d polarity=%u mode=%d", dev->dev.topic,
           dev->wire == &Wire ? 0:1,
           dev->dev.i2caddr, dev->dev.irq_pin, dev->dev.irq_pin_mode,
-          dev->dev.irq_pin_edge, dev->irq_polarity);
+          dev->dev.irq_pin_edge, dev->irq_polarity, dev->dps_mode);
 
-    pinMode(dev->dev.irq_pin, dev->dev.irq_pin_mode);
+    if (dev->dev.irq_pin) {
+        pinMode(dev->dev.irq_pin, dev->dev.irq_pin_mode);
+    }
 
     dev->sensor->begin(*dev->wire, dev->dev.i2caddr);
     delay(100);
     if ((ret = dev->sensor->standby()) != DPS__SUCCEEDED) {
         // TOGGLE(TRIGGER1);
+        dev->dps_mode = DPS3XX_ERRORED;
         log_e("%s: standby failed: %d", dev->dev.topic, ret);
         goto FAIL;
     }
@@ -134,51 +143,80 @@ int16_t dps368_setup(int i) {
           dev->sensor->getProductId(),
           dev->sensor->getRevisionId());
 
-    // measure temperature once for pressure compensation
-    float temperature;
-    if ((ret = dev->sensor->measureTempOnce(temperature, dev->temp_osr)) != 0) {
-        log_e("%s: measureTempOnce failed ret=%d", dev->dev.topic, ret);
-        // TOGGLE(TRIGGER1);
-        goto FAIL;
+    // measure temperature and pressure average conversion times
+    tduration = pduration = 0.0;
+    num_failed = 0;
+
+    for (auto i = 0; i < NUM_INITIAL_SAMPLES; i++) {
+        float start = fseconds();
+        if ((ret = dev->sensor->measureTempOnce(temperature, dev->temp_osr)) != 0) {
+            log_e("%s: measureTempOnce failed ret=%d", dev->dev.topic, ret);
+            num_failed++;
+        }
+        tduration += (fseconds() - start);
+        start = fseconds();
+        if ((ret = dev->sensor->measurePressureOnce(pressure, dev->prs_osr)) != 0) {
+            log_e("%s: measurePressureOnce failed ret=%d", dev->dev.topic, ret);
+            num_failed++;
+        }
+        pduration += (fseconds() - start);
+    }
+    if (num_failed == 0) {
+        dev->temp_conversion_time = (tduration / NUM_INITIAL_SAMPLES);
+        log_i("%s: compensating for %.2f°, temp conversion time=%.1f ms", dev->dev.topic, temperature,
+              dev->temp_conversion_time * 1.0e3);
+
+        dev->prs_conversion_time = (pduration / NUM_INITIAL_SAMPLES);
+        log_i("%s: pressure %.3f hPa, pressure conversion time=%.1f ms", dev->dev.topic, pressure/100.0,
+              dev->prs_conversion_time * 1.0e3);
+        dev->dps_mode = DPS3XX_IDLE;
     } else {
-        log_i("%s: compensating for %.2f°", dev->dev.topic, temperature);
+        log_e("%s: initial reads failed %d times out of %d ret=%d", dev->dev.topic, num_failed, NUM_INITIAL_SAMPLES, ret);
+        dev->dev.device_initialized = false;
+        dev->dps_mode = DPS3XX_ERRORED;
+        return ret;
     }
 
     if ((ret = dev->sensor->standby()) != DPS__SUCCEEDED) {
         log_e("%s: standby2 failed: %d", dev->dev.topic, ret);
+        dev->dps_mode = DPS3XX_ERRORED;
         // TOGGLE(TRIGGER1);
         goto FAIL;
     }
 
-    attachInterruptArg(digitalPinToInterrupt(dev->dev.irq_pin), irq_handler, (void *)dev, dev->dev.irq_pin_edge);
-    dev->dev.irq_attached = true;
+    if (dev->dev.irq_pin) {
+        attachInterruptArg(digitalPinToInterrupt(dev->dev.irq_pin), irq_handler, (void *)dev, dev->dev.irq_pin_edge);
+        dev->dev.irq_attached = true;
 
-    // define what causes an interrupt: both temperature and pressure conversion
-    if ((ret = dev->sensor->setInterruptSources(DPS3xx_BOTH_INTR, dev->irq_polarity)) != 0) {
-        log_i("%s: setInterruptSources: %d", dev->dev.topic, ret);
-        goto FAIL;
-    }
-    // clear interrupt flags by reading the IRQ status register
-    if ((ret = dev->sensor->getIntStatusPrsReady()) != 0) {
-        log_i("%s: getIntStatusPrsReady: IRQ pending", dev->dev.topic, ret);
-        // TOGGLE(TRIGGER1);
-    }
-    // start one-shot conversion
-    // interrupt will be posted at end of conversion
-    if ((ret = dev->sensor->startMeasurePressureOnce(dev->prs_osr)) != 0) {
-        log_e("%s: startMeasurePressureOnce: %d", dev->dev.topic, ret);
-        // TOGGLE(TRIGGER1);
-        goto FAIL;
+        // define what causes an interrupt: both temperature and pressure conversion
+        if ((ret = dev->sensor->setInterruptSources(DPS3xx_BOTH_INTR, dev->irq_polarity)) != 0) {
+            log_i("%s: setInterruptSources: %d", dev->dev.topic, ret);
+            dev->dps_mode = DPS3XX_ERRORED;
+            goto FAIL;
+        }
+
+        // clear interrupt flags by reading the IRQ status register
+        if ((ret = dev->sensor->getIntStatusPrsReady()) != 0) {
+            log_i("%s: getIntStatusPrsReady: IRQ pending", dev->dev.topic, ret);
+            // TOGGLE(TRIGGER1);
+        }
+        // start one-shot conversion iff irq driven
+        // interrupt will be posted at end of conversion
+        if ((ret = dev->sensor->startMeasurePressureOnce(dev->prs_osr)) != 0) {
+            log_e("%s: startMeasurePressureOnce: %d", dev->dev.topic, ret);
+            // TOGGLE(TRIGGER1);
+            dev->dps_mode = DPS3XX_ERRORED;
+            goto FAIL;
+        }
+        dev->dps_mode = DPS3XX_PRESSURE;
+    } else {
+        dev->dps_mode = DPS3XX_IDLE;
     }
     dev->dev.device_initialized = true;
-    log_e("%s: init %d success", dev->dev.topic, dev->dev.init_count);
+    log_e("%s: init %d success mode=%d", dev->dev.topic, dev->dev.init_count, dev->dps_mode);
     return DPS__SUCCEEDED;
 
 FAIL:
     dps368_deconfigure("fail", dev);
-
-    // ret != DPS__SUCCEEDED
-    // device_initialized == false
-    // irq_attached == false
     return ret;
 }

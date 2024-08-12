@@ -15,9 +15,11 @@
 #include "meteo.hpp"
 
 TICKER(gps, GPS_INTERVAL);
+TICKER(baro, BARO_INTERVAL);
 TICKER(stats, STATS_INTERVAL);
 TICKER(ble, BLE_INTERVAL);
 TICKER(nfc, NFC_INTERVAL);
+TICKER(imu, IMU_INTERVAL);
 
 void stats_loop(void);
 void stats_setup(void);
@@ -26,6 +28,7 @@ void nfc_loop(void);
 void nfc_poll(void);
 void flow_report(bool force);
 void flow_setup(void);
+void baro_loop(void);
 
 void sensor_loop(void) {
     process_measurements();
@@ -33,7 +36,14 @@ void sensor_loop(void) {
 #if defined(FLOWSENSOR) || defined(QUADRATURE_DECODER)
     flow_report(false);
 #endif
-
+    if (TIME_FOR(baro)) {
+        baro_loop();
+        DONE_WITH(baro);
+    }
+    if (TIME_FOR(imu)) {
+        imu_loop();
+        DONE_WITH(imu);
+    }
 #ifdef UBLOX_SUPPORT
     if (TIME_FOR(gps)) {
         ublox_trigger_read();
@@ -76,6 +86,8 @@ void sensor_setup(void) {
             log_e("dps%d setup failed ret=%d - giving up", i, ret);
         }
     }
+    RUNTICKER(baro);
+
 #ifdef UBLOX_SUPPORT
     if (ublox_setup()) {
         log_i("ublox initialized");
@@ -86,6 +98,7 @@ void sensor_setup(void) {
     if (imu_setup(&imu_sensor)) {
         log_i("imu initialized");
     }
+    RUNTICKER(imu);
 #endif
 #if defined(FLOWSENSOR) || defined(QUADRATURE_DECODER)
     flow_setup();

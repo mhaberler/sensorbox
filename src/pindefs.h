@@ -17,12 +17,22 @@
     // #define UBLOX_PPS_PIN 4
 
     // IMU - I2C0
-    #define IMU_IRQ_PIN 1
-
+    #ifdef USE_IRQ
+        #define IMU_IRQ_PIN 1
+    #else
+        #define IMU_IRQ_PIN 0
+    #endif
+ 
     // DPS368
-    #define DPS0_IRQ_PIN 47
-    #define DPS1_IRQ_PIN 48
-    #define DPS2_IRQ_PIN 4
+    #ifdef USE_IRQ
+        #define DPS0_IRQ_PIN 47
+        #define DPS1_IRQ_PIN 48
+        #define DPS2_IRQ_PIN 4
+    #else
+        #define DPS0_IRQ_PIN 0
+        #define DPS1_IRQ_PIN 0
+        #define DPS2_IRQ_PIN 0
+    #endif
 
     // SPI - SD Card
     #define SPI0_CLOCK 14
@@ -117,7 +127,7 @@
     #endif
 
     #ifdef QUADRATURE_DECODER
-        #define PIN_FLOWSENSOR_A 8 
+        #define PIN_FLOWSENSOR_A 8
         #define PIN_FLOWSENSOR_B 10
     #endif
 
@@ -213,10 +223,10 @@
 #endif
 
 #if !defined(ICM_20948_I2C_ADDR)
-#define ICM_20948_I2C_ADDR ICM_20948_I2C_ADDR_AD1
+    #define ICM_20948_I2C_ADDR ICM_20948_I2C_ADDR_AD1
 #endif
 #if !defined(IMU_WIRE)
-#define IMU_WIRE &Wire
+    #define IMU_WIRE &Wire
 #endif
 
 

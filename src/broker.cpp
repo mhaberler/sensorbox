@@ -17,8 +17,8 @@ PsychicHttpsServer httpsServer;
 PsychicWebSocketProxy::Server websocket_handler([] { return new PsychicWebSocketProxy::ShiftingBufferProxy<1024>(); });
 
 ::WiFiServer tcp_server(1883);
-// PicoMQTT::Server mqtt(tcp_server, websocket_handler);
-PicoMQTT::Server mqtt(websocket_handler);
+PicoMQTT::Server mqtt(tcp_server, websocket_handler);
+// PicoMQTT::Server mqtt(websocket_handler);
 
 void broker_setup() {
     httpsServer.config.max_uri_handlers = 20;  

@@ -133,9 +133,12 @@ void soft_irq(void* arg) {
                 dps_sensors_t *d = &dps_sensors[i];
                 if (!d->dev.device_present)
                     continue;
+
                 // if (!d->dev.device_initialized)
                 //     continue;
                 if (now - d->dev.last_heard > i2c_timeout) {
+                    if (d->dps_mode != DPS3XX_ERRORED)
+                        continue;
                     log_e("%s timeout (%f sec) - reinit", d->dev.topic, i2c_timeout.get());
                     // might publish a sensor fault message here
                     int16_t ret = dps368_setup(i);
