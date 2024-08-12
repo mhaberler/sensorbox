@@ -108,4 +108,6 @@ bool ublox_setup() {
     return false;
 }
 void ublox_loop(void) {}
+
+void set_nav_rate(int nav_rate) {}
 #endif

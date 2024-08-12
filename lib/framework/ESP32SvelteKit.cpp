@@ -67,6 +67,12 @@ void ESP32SvelteKit::begin()
     // SvelteKit uses a lot of handlers, so we need to increase the max_uri_handlers
     // WWWData has 77 Endpoints, Framework has 27, and Lighstate Demo has 4
     _server->config.max_uri_handlers = _numberEndpoints;
+    #ifdef HTTPD_STACK_SIZE
+        _server->config.stack_size = HTTPD_STACK_SIZE;
+    #endif
+    #ifdef HTTPD_MAX_OPEN_SOCKETS
+        _server->config.max_open_sockets = HTTPD_MAX_OPEN_SOCKETS;
+    #endif
     _server->listen(80);
 
 #ifdef EMBED_WWW

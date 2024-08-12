@@ -1,3 +1,5 @@
+#ifdef BLE_SUPPORT
+
 #include <Arduino.h>
 #include "freertos/ringbuf.h"
 #include "ringbuffer.hpp"
@@ -177,3 +179,7 @@ void process_ble(void) {
     bleDeliver(BLEdata);
     bleadv_queue->return_item(buffer);
 }
+
+#else
+void process_ble(void) {}
+#endif
