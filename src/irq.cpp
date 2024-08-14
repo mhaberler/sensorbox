@@ -216,111 +216,17 @@ void run_i2c_task(void* arg) {
                 }
             }
 
-            // if (bits & EVENT_TRIGGER_BATTERY) {
-            //     battery_check();
-            // }
-            if (bits & EVENT_TRIGGER_NFC) {
-                nfc_poll();
+            if (bits & EVENT_TRIGGER_BATTERY) {
+                battery_check();
             }
+            // if (bits & EVENT_TRIGGER_NFC) {
+            //     nfc_poll();
+            // }
         }
         xSemaphoreGive(i2cMutex);
     }
     // i2cMutex released
-
-
-    // dps368_irq(static_cast<dps_sensors_t *>(msg.dev), msg.timestamp);
 }
-#if 0
-for (;;) {
-    while (xQueueReceive(irq_queue, &msg, 10 * portTICK_PERIOD_MS) == pdTRUE) {
-        TOGGLE(TRIGGER2);
 
-        devhdr_t *dh = static_cast<devhdr_t *>(msg.dev);
-        i2c_gendev_t *gd = &dh->dev;
-        gd->last_heard = msg.timestamp;
-
-        switch (gd->type) {
-            case DEV_DPS368: {
-                    dps368_irq(static_cast<dps_sensors_t *>(msg.dev), msg.timestamp);
-                }
-                break;
-#if defined(IMU_SUPPORT)
-
-            case DEV_ICM_20948: {
-                    icm20948_irq(static_cast<icm20948_t *>(msg.dev), msg.timestamp);
-                }
-                break;
-#endif
-            case DEV_M5STACK_IMU:
-                break;
-            case DEV_NEO_M9N:
-#ifdef UBLOX_SUPPORT
-                ublox_read(gd);
-#endif
-                break;
-
-            case DEV_MFRC522:
-                TOGGLE(TRIGGER2);
-                nfc_poll();
-                TOGGLE(TRIGGER2);
-                break;
-
-            case DEV_BATTERY:
-                battery_check();
-                break;
-
-            case DEV_MICROPHONE:
-                break;
-        }
-        if (uxQueueMessagesWaiting(irq_queue) == 0) {
-            break;
-        }
-    }
-    TOGGLE(TRIGGER2);
-
-    yield();
-
-    // check sensors being alive
-    if (TIME_FOR(deadman)) {
-        float now = fseconds();
-        for (auto i = 0; i < num_dps_sensors; i++) {
-            dps_sensors_t *d = &dps_sensors[i];
-            if (!d->dev.device_present)
-                continue;
-
-            // if (!d->dev.device_initialized)
-            //     continue;
-            if (now - d->dev.last_heard > i2c_timeout) {
-                if (d->dps_mode != DPS3XX_ERRORED)
-                    continue;
-                log_e("%s timeout (%f sec) - reinit", d->dev.topic, i2c_timeout.get());
-                // might publish a sensor fault message here
-                int16_t ret = dps368_setup(i);
-                d->previous_alt = -1e6;
-                d->previous_time = -1e6;
-                d->initial_alt_values = INITIAL_ALTITUDE_VALUES;
-                d->dev.last_heard = now; // leave some time till next kick
-            }
-        }
-#if defined(IMU_SUPPORT)
-
-#ifdef USE_IRQ
-
-        if (imu_sensor.dev.device_present &&
-                // !imu_sensor.dev.device_initialized &&
-                (now - imu_sensor.dev.last_heard > i2c_timeout.get())) {
-            log_e("%s timeout (%f sec) - reinit", imu_sensor.dev.topic, i2c_timeout.get());
-            imu_setup(&imu_sensor);
-            imu_sensor.dev.last_heard = now; // leave some time till next kick
-        }
-#endif
-#endif
-        DONE_WITH(deadman);
-    }
-
-}
-#endif
-
-//}
 
 
