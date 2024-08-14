@@ -152,7 +152,7 @@ void run_i2c_task(void* arg) {
 #endif
         if (bits & EVENT_TRIGGER_ICM_20948) {
 #ifdef UBLOX_SUPPORT
-            ublox_read(gd);
+            ublox_read();
 #endif
         }
 
