@@ -4,11 +4,11 @@
 
     #define I2C0_SDA 7
     #define I2C0_SCL 8
-    #define I2C0_SPEED 400000
+    #define I2C0_SPEED I2C_400K
 
     #define I2C1_SDA 5
     #define I2C1_SCL 6
-    #define I2C1_SPEED 400000
+    #define I2C1_SPEED I2C_400K
 
     #define NEOPIXEL_LED 38
 
@@ -96,11 +96,11 @@
 #if defined(M5STAMP_C3U)
     #define I2C0_SDA 1
     #define I2C0_SCL 0
-    #define I2C0_SPEED 400000
+    #define I2C0_SPEED I2C_400K
 
     // #define I2C1_SDA 19
     // #define I2C1_SCL 18
-    // #define I2C1_SPEED 400000
+    // #define I2C1_SPEED I2C_400K
 
     #define NEOPIXEL_LED 2
 
@@ -206,7 +206,7 @@
 #if defined(ARDUINO_M5Stack_StampS3)
     #define I2C0_SDA 13 // grove
     #define I2C0_SCL 15
-    #define I2C0_SPEED 400000
+    #define I2C0_SPEED I2C_400K
 
     #define ICM_20948_I2C_ADDR ICM_20948_I2C_ADDR_AD1
 

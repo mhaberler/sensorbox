@@ -14,6 +14,8 @@
 #include "RunningStats.hpp"
 #include "meteo.hpp"
 
+extern EventGroupHandle_t eventGroup;
+
 TICKER(gps, GPS_INTERVAL);
 TICKER(baro, BARO_INTERVAL);
 TICKER(stats, STATS_INTERVAL);
@@ -31,28 +33,30 @@ void flow_setup(void);
 void baro_loop(void);
 
 void sensor_loop(void) {
-    process_measurements();
 
 #if defined(FLOWSENSOR) || defined(QUADRATURE_DECODER)
     flow_report(false);
 #endif
     if (TIME_FOR(baro)) {
-        baro_loop();
+        xEventGroupSetBits(eventGroup, EVENT_TRIGGER_DPS368);
         DONE_WITH(baro);
     }
     if (TIME_FOR(imu)) {
-        imu_loop();
+        xEventGroupSetBits(eventGroup, EVENT_TRIGGER_ICM_20948);
+        // imu_loop();
         DONE_WITH(imu);
     }
 #ifdef UBLOX_SUPPORT
     if (TIME_FOR(gps)) {
-        ublox_trigger_read();
-
+        // ublox_trigger_read();
+        xEventGroupSetBits(eventGroup, EVENT_TRIGGER_NEO_M9N);
         DONE_WITH(gps);
     }
 #endif
     if (TIME_FOR(nfc)) {
-        nfc_loop();
+        xEventGroupSetBits(eventGroup, EVENT_TRIGGER_NFC);
+
+        // nfc_loop();
         DONE_WITH(nfc);
     }
     if (TIME_FOR(ble)) {

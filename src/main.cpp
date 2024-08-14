@@ -100,7 +100,7 @@ extern battery_status_t battery_conf;
 
 void setup() {
 
-    delay(3000);
+    // delay(3000);
 #ifdef M5UNIFIED
     auto cfg = M5.config();
     cfg.output_power = true;
@@ -210,11 +210,11 @@ void setup() {
     printDems();
 #endif
     sensor_setup();
-    BaseType_t ret = run_baro_task();
+    BaseType_t ret = run_i2c_task();
     if (ret != pdPASS) {
-        log_e("failed to create baro_task task: %d", ret);
+        log_e("failed to create i2c_task task: %d", ret);
     } else {
-        log_i("baro_task task created");
+        log_i("i2c_task task created");
     }
     mqtt.begin();
 
@@ -253,6 +253,8 @@ void loop() {
     // webserver_loop();
     // TOGGLE(TRIGGER1);
 
+    process_measurements();
+
     TOGGLE(TRIGGER2);
     sensor_loop();
     TOGGLE(TRIGGER2);
@@ -270,10 +272,6 @@ void loop() {
         publishDems();
 #endif
         xEventGroupSetBits(eventGroup, EVENT_TRIGGER_BATTERY);
-
-        // if (battery_conf.dev.device_present) {
-        //     battery_check();
-        // }
         settings_tick();
 #if defined(FLOWSENSOR) || defined(QUADRATURE_DECODER)
         flow_report(true);

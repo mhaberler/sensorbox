@@ -13,9 +13,9 @@
 ICM_20948_I2C icm;
 
 #if defined(IMU_SUPPORT)
-void imu_loop(void) {
-    post_softirq(&imu_sensor);
-}
+// void imu_loop(void) {
+//     post_softirq(&imu_sensor);
+// }
 
 bool icm20948_irq(icm20948_t *dev, const float &timestamp) {
     ICM_20948_Status_e ret;

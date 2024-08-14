@@ -3,10 +3,13 @@
 #include <Wire.h>
 #include "i2cio.hpp"
 
-
-bool i2c_probe(TwoWire &w, uint8_t addr) {
+bool i2c_probe(TwoWire &w, uint8_t addr, unsigned long timeout) {
+    unsigned long t = w.getTimeOut();
+    w.setTimeOut(timeout);
     w.beginTransmission(addr);
-    return (w.endTransmission() == 0);
+    uint8_t result = w.endTransmission();
+    w.setTimeOut(t);
+    return (result == 0);
 }
 
 void i2c_scan(TwoWire &w) {

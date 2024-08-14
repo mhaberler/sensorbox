@@ -49,7 +49,7 @@ void ublox_trigger_read(void) {
     }
 }
 
-void ublox_read(const void *dev) {
+void ublox_read(void) {
     if (gpsconf.dev.device_initialized) {
         // std::unique_lock<std::mutex> lock(ublox_mutex);
         ublox_neo.checkUblox();

@@ -36,8 +36,11 @@ static const char *ruuvi_ids[] = {
     "\002dt",
 };
 
+static unsigned long i2c_timeout;
+
 void nfc_setup(void) {
     if (!nfcconf.driver_instantiated) {
+        i2c_timeout = nfcconf.wire->getTimeOut();
         nfcconf.driver = new MFRC522DriverI2C{nfcconf.dev.i2caddr, *nfcconf.wire};
         nfcconf.mfrc522 = new MFRC522Extended{*nfcconf.driver};
         nfcconf.nfc = new NfcAdapter(nfcconf.mfrc522);
@@ -56,8 +59,10 @@ void nfc_loop(void) {
     post_softirq(&nfcconf);
 }
 
+
 void nfc_poll(void) {
-    nfcconf.dev.device_present = detect(*nfcconf.wire, nfcconf.dev.i2caddr);
+
+    nfcconf.dev.device_present = detect(*nfcconf.wire, nfcconf.dev.i2caddr, NFC_I2C_TIMEOUT);
     if (nfcconf.dev.device_present ^ nfcconf.dev.device_initialized) {
         if (nfcconf.dev.device_present) {
             // just plugged in

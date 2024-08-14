@@ -33,6 +33,8 @@ typedef enum {
 #define EVENT_TRIGGER_NEO_M9N (1 << 3) 
 #define EVENT_TRIGGER_BATTERY (1 << 4) 
 #define EVENT_TRIGGER_MICROPHONE (1 << 5) 
+#define EVENT_TRIGGER_NFC (1 << 6) 
+
 
 typedef enum {
     SAMPLE_INVALID,
