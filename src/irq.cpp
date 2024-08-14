@@ -216,12 +216,12 @@ void run_i2c_task(void* arg) {
                 }
             }
 
-            if (bits & EVENT_TRIGGER_BATTERY) {
-                battery_check();
-            }
-            // if (bits & EVENT_TRIGGER_NFC) {
-            //     nfc_poll();
+            // if (bits & EVENT_TRIGGER_BATTERY) {
+            //     battery_check();
             // }
+            if (bits & EVENT_TRIGGER_NFC) {
+                nfc_poll();
+            }
         }
         xSemaphoreGive(i2cMutex);
     }
