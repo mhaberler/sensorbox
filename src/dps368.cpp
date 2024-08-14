@@ -176,15 +176,15 @@ int16_t dps368_setup(int i) {
         dev->dps_mode = DPS3XX_ERRORED;
         return ret;
     }
-
-    if ((ret = dev->sensor->standby()) != DPS__SUCCEEDED) {
-        log_e("%s: standby2 failed: %d", dev->dev.topic, ret);
-        dev->dps_mode = DPS3XX_ERRORED;
-        // TOGGLE(TRIGGER1);
-        goto FAIL;
-    }
-
     if (dev->dev.irq_pin) {
+
+        if ((ret = dev->sensor->standby()) != DPS__SUCCEEDED) {
+            log_e("%s: standby2 failed: %d", dev->dev.topic, ret);
+            dev->dps_mode = DPS3XX_ERRORED;
+            // TOGGLE(TRIGGER1);
+            goto FAIL;
+        }
+
         attachInterruptArg(digitalPinToInterrupt(dev->dev.irq_pin), irq_handler, (void *)dev, dev->dev.irq_pin_edge);
         dev->dev.irq_attached = true;
 

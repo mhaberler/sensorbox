@@ -22,7 +22,7 @@
     #else
         #define IMU_IRQ_PIN 0
     #endif
- 
+
     // DPS368
     #ifdef USE_IRQ
         #define DPS0_IRQ_PIN 47
@@ -56,13 +56,21 @@
 #if defined(ARDUINO_M5STACK_CORES3)
 
     // IMU - I2C0
-    #define IMU_IRQ_PIN 10 // yellow 4
-
+    #ifdef USE_IRQ
+        #define IMU_IRQ_PIN 10 // yellow 4
+    #else
+        #define IMU_IRQ_PIN 0
+    #endif
     // DPS368
-    #define DPS0_IRQ_PIN 6  // blue 6
-    #define DPS1_IRQ_PIN 7  // violet 7
-    #define DPS2_IRQ_PIN 5
-
+    #ifdef USE_IRQ
+        #define DPS0_IRQ_PIN 6  // blue 6
+        #define DPS1_IRQ_PIN 7  // violet 7
+        #define DPS2_IRQ_PIN 5
+    #else
+        #define DPS0_IRQ_PIN 0
+        #define DPS1_IRQ_PIN 0
+        #define DPS2_IRQ_PIN 0
+    #endif
     // SD card
     #define SD_INSERTED -1
     #define SPI0_SLAVE_SELECT_SDCARD 4
@@ -71,10 +79,10 @@
     #define SPI0_MOSI -1
     #define SPI0_MISO -1
 
-    #define TRIGGER1 18 // blue 14
-    #define TRIGGER2 17 // violett 15
-    #define TRIGGER3 13 // yellow 12
-    #define TRIGGER4 0 // green 13
+    // #define TRIGGER1 18 // blue 14
+    // #define TRIGGER2 17 // violett 15
+    // #define TRIGGER3 13 // yellow 12
+    // #define TRIGGER4 0 // green 13
 
     #ifdef QUADRATURE_DECODER
         #define PIN_FLOWSENSOR_A 17  // blue port
