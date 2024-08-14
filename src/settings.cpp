@@ -176,6 +176,7 @@ float_setting_t i2c_timeout(baro_settings, "i2c_timeout", 10.0);
 
 // exponential smoothing factor for baro samples
 int_setting_t alpha_pct(baro_settings, "alpha", 90);
+float_setting_t baro_rate(baro_settings, "rate", 3.0);
 
 // icm20948.cpp
 PicoSettings imu_settings(mqtt, "imu");
@@ -190,7 +191,7 @@ double_setting_t ref_z(imu_settings, "ref_z", 0.0);
 double_setting_t ref_w(imu_settings, "ref_w", 1.0);
 
 double_setting_t heading_correction(imu_settings, "hdg_corr", 0.0);
-float_setting_t quat9_rate(imu_settings, "quat9_rate", 5.0);
+float_setting_t quat9_rate(imu_settings, "rate", 5.0);
 
 // ublox.cpp
 PicoSettings gps_settings(mqtt, "gps");

@@ -26,6 +26,14 @@ typedef enum {
     DEV_MICROPHONE,
 } device_t;
 
+// FreeRTOS event group bits for i2c task
+#define EVENT_TRIGGER_DPS368 (1 << 0) 
+#define EVENT_TRIGGER_ICM_20948 (1 << 1)
+#define EVENT_TRIGGER_M5STACK_IMU (1 << 2) 
+#define EVENT_TRIGGER_NEO_M9N (1 << 3) 
+#define EVENT_TRIGGER_BATTERY (1 << 4) 
+#define EVENT_TRIGGER_MICROPHONE (1 << 5) 
+
 typedef enum {
     SAMPLE_INVALID,
     SAMPLE_PRESSURE,

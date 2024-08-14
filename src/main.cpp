@@ -28,6 +28,8 @@ extern PicoMQTT::Server mqtt;
 #include <LightStateService.h>
 #include <PsychicHttpServer.h>
 
+extern EventGroupHandle_t eventGroup;
+
 PsychicHttpServer server;
 
 ESP32SvelteKit esp32sveltekit(&server, 120);
@@ -267,9 +269,11 @@ void loop() {
 #ifdef DEM_SUPPORT
         publishDems();
 #endif
-        if (battery_conf.dev.device_present) {
-            battery_check();
-        }
+        xEventGroupSetBits(eventGroup, EVENT_TRIGGER_BATTERY);
+
+        // if (battery_conf.dev.device_present) {
+        //     battery_check();
+        // }
         settings_tick();
 #if defined(FLOWSENSOR) || defined(QUADRATURE_DECODER)
         flow_report(true);

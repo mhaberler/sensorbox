@@ -7,6 +7,8 @@
 #include "tickers.hpp"
 #include "fmicro.h"
 #include "pindefs.h"
+#include <freertos/event_groups.h>
+
 #undef TRACE_PINS
 
 void ublox_read(const void *dev);
@@ -17,6 +19,8 @@ QueueHandle_t irq_queue;
 espidf::RingBuffer *measurements_queue;
 TaskHandle_t baro_task;
 SemaphoreHandle_t i2cMutex;
+EventGroupHandle_t eventGroup;
+
 EXT_TICKER(gps);
 EXT_TICKER(deadman);
 
@@ -27,6 +31,7 @@ bool dps368_irq(dps_sensors_t * dev, const float &timestamp);
 bool icm20948_irq(icm20948_t *dev, const float &timestamp);
 
 bool setup_queues(void) {
+    eventGroup = xEventGroupCreate();
     i2cMutex = xSemaphoreCreateMutex();
     if (i2cMutex == NULL) {
         log_e("xSemaphoreCreateMutex");
@@ -123,24 +128,34 @@ void run_baro_task(void* arg) {
         log_d("bar setup done.");
     }
     cycle = 0;
-#define I2C_LOCK_WAIT 100
+
     // baro loop
     for (;;) {
         bool prs_measurement = (cycle++ & TEMP_COUNT_MASK);
 
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        if (xSemaphoreTake(i2cMutex, portTICK_PERIOD_MS * I2C_LOCK_WAIT) == pdTRUE) {
+       EventBits_t bits = xEventGroupWaitBits(
+            eventGroup,
+            EVENT_TRIGGER_ICM_20948 | EVENT_TRIGGER_M5STACK_IMU | EVENT_TRIGGER_NEO_M9N |
+             EVENT_TRIGGER_BATTERY | EVENT_TRIGGER_MICROPHONE,  // Waiting for these bits
+            pdTRUE,   // Clear the bits before returning
+            pdFALSE,  // Wait for any one bit to be set
+            1000 / portTICK_PERIOD_MS // Wait indefinitely   // FIXME baro interval
+        );
+       if (bits & EVENT_TRIGGER_BATTERY) {
+            Serial.println("EVENT_TRIGGER_BATTERY triggered!");
+            continue;
+        }
+        // vTaskDelay(1000 / portTICK_PERIOD_MS);
+        if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
             int16_t ret;
             for (auto i = 0; i < num_dps_sensors; i++) {
                 dps_sensors_t *dev = &dps_sensors[i];
+                dev->start_time = fseconds();
                 if (prs_measurement) {
                     ret = dev->sensor->startMeasurePressureOnce(dev->prs_osr);
-
                 } else {
                     ret = dev->sensor->startMeasureTempOnce(dev->temp_osr);
-
                 }
-
                 if (ret != DPS__SUCCEEDED) {
                     log_e("startMeasureXnce %d %d", i, ret);
                     // FIXME failcounters
@@ -152,10 +167,9 @@ void run_baro_task(void* arg) {
             }
             xSemaphoreGive(i2cMutex);
         }
-        float timestamp = fseconds();
-        vTaskDelay(250 / portTICK_PERIOD_MS);
+        vTaskDelay(prs_measurement ? prs_delay_ticks : temp_delay_ticks);
 
-        if (xSemaphoreTake(i2cMutex, portTICK_PERIOD_MS * I2C_LOCK_WAIT) == pdTRUE) {
+        if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
             for (auto i = 0; i < num_dps_sensors; i++) {
                 dps_sensors_t *dev = &dps_sensors[i];
                 float value;
@@ -178,14 +192,9 @@ void run_baro_task(void* arg) {
                     // TOGGLE(TRIGGER2);
                 }
                 bs->dev = dev;
-                bs->timestamp = timestamp;
-                if (prs_measurement) {
-                    bs->type  = SAMPLE_PRESSURE;
-                    bs->value = value / 100.0f;  // scale to hPa
-                // } else {
-                //     bs->type  = SAMPLE_TEMPERATURE;
-                //     bs->value = value; // already degC
-                }
+                bs->timestamp = dev->start_time;
+                bs->type  = SAMPLE_PRESSURE;
+                bs->value = value / 100.0f;  // scale to hPa
                 if (measurements_queue->send_complete(bs) != pdTRUE) {
                     commit_fail++;
                 }
@@ -193,36 +202,6 @@ void run_baro_task(void* arg) {
             xSemaphoreGive(i2cMutex);
         }
         // i2cMutex released
-
-        // dev->prs_conversion_time
-        // release I2C lock during conversion
-
-
-
-        // int16_t DpsClass::measurePressureOnce(float &result, uint8_t oversamplingRate)
-        // {
-        //     // start the measurement
-        //     int16_t ret = startMeasurePressureOnce(oversamplingRate);
-        //     if (ret != DPS__SUCCEEDED)
-        //     {
-        //         if (ret == DPS__FAIL_TOOBUSY)
-        //         {
-        //    		    standby();
-        //    	    }
-        //         return ret;
-        //     }
-
-        //     // wait until measurement is finished
-        //     delay(calcBusyTime(0U, m_prsOsr) / DPS__BUSYTIME_SCALING);
-        //     delay(DPS3xx__BUSYTIME_FAILSAFE);
-
-        //     ret = getSingleResult(result);
-        //     if (ret != DPS__SUCCEEDED)
-        //     {
-        //         standby();
-        //     }
-        //     return ret;
-        // }
 
 
         // dps368_irq(static_cast<dps_sensors_t *>(msg.dev), msg.timestamp);
