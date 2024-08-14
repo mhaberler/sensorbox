@@ -15,7 +15,8 @@ void battery_check(void);
 
 QueueHandle_t irq_queue;
 espidf::RingBuffer *measurements_queue;
-TaskHandle_t softirq_task;
+TaskHandle_t baro_task;
+SemaphoreHandle_t i2cMutex;
 EXT_TICKER(gps);
 EXT_TICKER(deadman);
 
@@ -25,27 +26,34 @@ uint32_t hardirq_fail, softirq_fail, measurements_queue_full, commit_fail;
 bool dps368_irq(dps_sensors_t * dev, const float &timestamp);
 bool icm20948_irq(icm20948_t *dev, const float &timestamp);
 
-void setup_queues(void) {
+bool setup_queues(void) {
+    i2cMutex = xSemaphoreCreateMutex();
+    if (i2cMutex == NULL) {
+        log_e("xSemaphoreCreateMutex");
+        return false;
+    }
     irq_queue = xQueueCreate(IRQ_QUEUELEN, sizeof(irqmsg_t));
     measurements_queue = new espidf::RingBuffer();
     measurements_queue->create(MEASMT_QUEUELEN, RINGBUF_TYPE_NOSPLIT);
+    return true;
 }
 
-BaseType_t irq_run_softirq_task(void) {
+BaseType_t run_baro_task(void) {
 #ifdef CONFIG_FREERTOS_UNICORE
-    return xTaskCreate(soft_irq, "soft_irq", SOFTIRQ_STACKSIZE, NULL,
-                       SOFTIRQ_PRIORITY, &softirq_task);
+    return xTaskCreate(run_baro_task, "run_baro_task", SOFTIRQ_STACKSIZE, NULL,
+                       SOFTIRQ_PRIORITY, &baro_task);
 #else
-    return xTaskCreatePinnedToCore(soft_irq, "soft_irq", SOFTIRQ_STACKSIZE, NULL,
-                                   SOFTIRQ_PRIORITY, &softirq_task, 1);
+    return xTaskCreatePinnedToCore(run_baro_task, "run_baro_task", BAROTASK_STACKSIZE, NULL,
+                                   BAROTASK_PRIORITY, &baro_task, BAROTASK_CORE);
 #endif
-
 }
 
 // first level interrupt handler
 // only notify 2nd level handler task passing any parameters
 // call only from interruot context
 void irq_handler(void *param) {
+#ifdef USE_IRQ
+
     TOGGLE(TRIGGER1);
     irqmsg_t msg;
     msg.dev = param;
@@ -56,11 +64,14 @@ void irq_handler(void *param) {
         hardirq_fail++;
     }
     TOGGLE(TRIGGER1);
+#endif
 }
 
 // post a soft irq to the handler queue/task
 // call only from userland context
 void post_softirq(void *dev) {
+#ifdef USE_IRQ
+
     TOGGLE(TRIGGER1);
     irqmsg_t msg = {
         .timestamp = fseconds(),
@@ -70,13 +81,131 @@ void post_softirq(void *dev) {
         softirq_fail++;
     }
     TOGGLE(TRIGGER1);
+#endif
 }
+
+
 
 // 2nd level interrupt handler
 // runs in user context - can do Wire I/O, log etc
-void soft_irq(void* arg) {
+void run_baro_task(void* arg) {
     irqmsg_t msg;
+    log_d("acquire i2c mutex...");
+    if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
 
+        for (auto i = 0; i < num_dps_sensors; i++) {
+            int n = 3;
+            int16_t ret;
+            while (n--) {
+                ret = dps368_setup(i);
+                if (ret == DPS__SUCCEEDED) {
+                    break;
+                }
+                log_e("dps%d setup failed ret=%d - retrying", i, ret);
+                delay(200);
+            }
+            if (ret != DPS__SUCCEEDED) {
+                log_e("dps%d setup failed ret=%d - giving up", i, ret);
+            }
+        }
+        // Give back the mutex
+        xSemaphoreGive(i2cMutex);
+    }
+    log_d("done..");
+#define I2C_LOCK_WAIT 100
+
+    for (;;) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        if (xSemaphoreTake(i2cMutex, portTICK_PERIOD_MS * I2C_LOCK_WAIT) == pdTRUE) {
+            for (auto i = 0; i < num_dps_sensors; i++) {
+                dps_sensors_t *dev = &dps_sensors[i];
+                // start ops
+                int16_t ret = dev->sensor->startMeasurePressureOnce(dev->prs_osr);
+
+                if (ret != DPS__SUCCEEDED) {
+                    log_e("startMeasurePressureOnce %d %d", i, ret);
+                    // FIXME failcounters
+                    if (ret == DPS__FAIL_TOOBUSY) {
+                        dev->sensor->standby();
+                    }
+                    continue;
+                }
+            }
+            xSemaphoreGive(i2cMutex);
+        }
+        float timestamp = fseconds();
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+
+        if (xSemaphoreTake(i2cMutex, portTICK_PERIOD_MS * I2C_LOCK_WAIT) == pdTRUE) {
+            for (auto i = 0; i < num_dps_sensors; i++) {
+                dps_sensors_t *dev = &dps_sensors[i];
+                float value;
+                int16_t ret = dev->sensor->getSingleResult(value);
+                if (ret != DPS__SUCCEEDED) {
+                    log_e("getSingleResult %d %d", i, ret);
+                    dev->sensor->standby();
+                    continue;
+                } else {
+                    // a pressure sample is ready
+                    baroSample_t *bs = nullptr;
+                    size_t sz = sizeof(baroSample_t);
+                    if (measurements_queue->send_acquire((void **)&bs, sz, 0) != pdTRUE) {
+                        measurements_queue_full++;
+                        // TOGGLE(TRIGGER2);
+                    } else  {
+                        bs->dev = dev;
+                        bs->timestamp = timestamp;
+                        if (/*FIXME*/ true) {
+                            bs->type  = SAMPLE_PRESSURE;
+                            bs->value = value / 100.0f;  // scale to hPa
+                        } else {
+                            bs->type  = SAMPLE_TEMPERATURE;
+                            bs->value = value; // already degC
+                        }
+                        if (measurements_queue->send_complete(bs) != pdTRUE) {
+                            commit_fail++;
+                        }
+                    }
+                }
+            }
+            xSemaphoreGive(i2cMutex);
+        }
+        // i2cMutex released
+
+        // dev->prs_conversion_time
+        // release I2C lock during conversion
+
+
+
+        // int16_t DpsClass::measurePressureOnce(float &result, uint8_t oversamplingRate)
+        // {
+        //     // start the measurement
+        //     int16_t ret = startMeasurePressureOnce(oversamplingRate);
+        //     if (ret != DPS__SUCCEEDED)
+        //     {
+        //         if (ret == DPS__FAIL_TOOBUSY)
+        //         {
+        //    		    standby();
+        //    	    }
+        //         return ret;
+        //     }
+
+        //     // wait until measurement is finished
+        //     delay(calcBusyTime(0U, m_prsOsr) / DPS__BUSYTIME_SCALING);
+        //     delay(DPS3xx__BUSYTIME_FAILSAFE);
+
+        //     ret = getSingleResult(result);
+        //     if (ret != DPS__SUCCEEDED)
+        //     {
+        //         standby();
+        //     }
+        //     return ret;
+        // }
+
+
+        // dps368_irq(static_cast<dps_sensors_t *>(msg.dev), msg.timestamp);
+    }
+#if 0
     for (;;) {
         while (xQueueReceive(irq_queue, &msg, 10 * portTICK_PERIOD_MS) == pdTRUE) {
             TOGGLE(TRIGGER2);
@@ -150,6 +279,8 @@ void soft_irq(void* arg) {
             }
 #if defined(IMU_SUPPORT)
 
+#ifdef USE_IRQ
+
             if (imu_sensor.dev.device_present &&
                     // !imu_sensor.dev.device_initialized &&
                     (now - imu_sensor.dev.last_heard > i2c_timeout.get())) {
@@ -158,10 +289,12 @@ void soft_irq(void* arg) {
                 imu_sensor.dev.last_heard = now; // leave some time till next kick
             }
 #endif
+#endif
             DONE_WITH(deadman);
         }
 
     }
+#endif
 
 }
 

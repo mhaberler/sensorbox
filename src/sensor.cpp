@@ -71,22 +71,22 @@ void sensor_setup(void) {
     RUNTICKER(ble);
 #endif
 
-    for (auto i = 0; i < num_dps_sensors; i++) {
-        int n = 3;
-        int16_t ret;
-        while (n--) {
-            ret = dps368_setup(i);
-            if (ret == DPS__SUCCEEDED) {
-                break;
-            }
-            log_e("dps%d setup failed ret=%d - retrying", i, ret);
-            delay(200);
-        }
-        if (ret != DPS__SUCCEEDED) {
-            log_e("dps%d setup failed ret=%d - giving up", i, ret);
-        }
-    }
-    RUNTICKER(baro);
+    // for (auto i = 0; i < num_dps_sensors; i++) {
+    //     int n = 3;
+    //     int16_t ret;
+    //     while (n--) {
+    //         ret = dps368_setup(i);
+    //         if (ret == DPS__SUCCEEDED) {
+    //             break;
+    //         }
+    //         log_e("dps%d setup failed ret=%d - retrying", i, ret);
+    //         delay(200);
+    //     }
+    //     if (ret != DPS__SUCCEEDED) {
+    //         log_e("dps%d setup failed ret=%d - giving up", i, ret);
+    //     }
+    // }
+    // RUNTICKER(baro);
 
 #ifdef UBLOX_SUPPORT
     if (ublox_setup()) {

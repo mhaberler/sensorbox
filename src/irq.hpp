@@ -14,6 +14,6 @@ extern espidf::RingBuffer *measurements_queue;
 extern uint32_t  hardirq_fail, softirq_fail, measurements_queue_full, commit_fail;
 
 void IRAM_ATTR  irq_handler(void *param);
-void soft_irq(void* arg);
-BaseType_t irq_run_softirq_task(void);
-void setup_queues(void);
+void run_baro_task(void* arg);
+BaseType_t run_baro_task(void);
+bool setup_queues(void);

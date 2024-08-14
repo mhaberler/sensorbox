@@ -208,11 +208,11 @@ void setup() {
     printDems();
 #endif
     sensor_setup();
-    BaseType_t ret = irq_run_softirq_task();
+    BaseType_t ret = run_baro_task();
     if (ret != pdPASS) {
-        log_e("failed to create soft_irq task: %d", ret);
+        log_e("failed to create baro_task task: %d", ret);
     } else {
-        log_i("soft_irq task created");
+        log_i("baro_task task created");
     }
     mqtt.begin();
 
