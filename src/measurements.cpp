@@ -82,7 +82,9 @@ void process_pressure(const baroSample_t s) {
 
         JsonDocument json;
         json["time"] = timestamp_sec;
+        json["temp"] = dev->last_temperature;
         json["hPa"] = s.value;
+        
         json["altitude"] = alt;
         json["verticalSpeedRaw"] = vertical_speed;
 

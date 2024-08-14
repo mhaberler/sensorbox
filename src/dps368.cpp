@@ -153,6 +153,7 @@ int16_t dps368_setup(int i) {
             log_e("%s: measureTempOnce failed ret=%d", dev->dev.topic, ret);
             num_failed++;
         }
+        dev->last_temperature = temperature;
         tduration += (fseconds() - start);
         start = fseconds();
         if ((ret = dev->sensor->measurePressureOnce(pressure, dev->prs_osr)) != 0) {

@@ -85,14 +85,17 @@ void post_softirq(void *dev) {
 }
 
 
+static TickType_t prs_delay_ticks, temp_delay_ticks;
+static uint32_t cycle;
 
 // 2nd level interrupt handler
 // runs in user context - can do Wire I/O, log etc
 void run_baro_task(void* arg) {
-    irqmsg_t msg;
+    // setup sensors
     log_d("acquire i2c mutex...");
     if (xSemaphoreTake(i2cMutex, portMAX_DELAY) == pdTRUE) {
-
+        float prs_max_duration = 0.0;
+        float temp_max_duration = 0.0;
         for (auto i = 0; i < num_dps_sensors; i++) {
             int n = 3;
             int16_t ret;
@@ -107,23 +110,39 @@ void run_baro_task(void* arg) {
             if (ret != DPS__SUCCEEDED) {
                 log_e("dps%d setup failed ret=%d - giving up", i, ret);
             }
+            prs_max_duration = max(prs_max_duration, dps_sensors[i].prs_conversion_time);
+            temp_max_duration = max(temp_max_duration, dps_sensors[i].temp_conversion_time);
         }
         // Give back the mutex
         xSemaphoreGive(i2cMutex);
-    }
-    log_d("done..");
-#define I2C_LOCK_WAIT 100
+        prs_max_duration  += PRESSURE_DELAY_MARGIN;
+        temp_max_duration += TEMP_DELAY_MARGIN;
 
+        prs_delay_ticks = int(prs_max_duration*1000) / portTICK_PERIOD_MS;
+        temp_delay_ticks = int(temp_max_duration*1000) / portTICK_PERIOD_MS;
+        log_d("bar setup done.");
+    }
+    cycle = 0;
+#define I2C_LOCK_WAIT 100
+    // baro loop
     for (;;) {
+        bool prs_measurement = (cycle++ & TEMP_COUNT_MASK);
+
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         if (xSemaphoreTake(i2cMutex, portTICK_PERIOD_MS * I2C_LOCK_WAIT) == pdTRUE) {
+            int16_t ret;
             for (auto i = 0; i < num_dps_sensors; i++) {
                 dps_sensors_t *dev = &dps_sensors[i];
-                // start ops
-                int16_t ret = dev->sensor->startMeasurePressureOnce(dev->prs_osr);
+                if (prs_measurement) {
+                    ret = dev->sensor->startMeasurePressureOnce(dev->prs_osr);
+
+                } else {
+                    ret = dev->sensor->startMeasureTempOnce(dev->temp_osr);
+
+                }
 
                 if (ret != DPS__SUCCEEDED) {
-                    log_e("startMeasurePressureOnce %d %d", i, ret);
+                    log_e("startMeasureXnce %d %d", i, ret);
                     // FIXME failcounters
                     if (ret == DPS__FAIL_TOOBUSY) {
                         dev->sensor->standby();
@@ -145,27 +164,30 @@ void run_baro_task(void* arg) {
                     log_e("getSingleResult %d %d", i, ret);
                     dev->sensor->standby();
                     continue;
-                } else {
-                    // a pressure sample is ready
-                    baroSample_t *bs = nullptr;
-                    size_t sz = sizeof(baroSample_t);
-                    if (measurements_queue->send_acquire((void **)&bs, sz, 0) != pdTRUE) {
-                        measurements_queue_full++;
-                        // TOGGLE(TRIGGER2);
-                    } else  {
-                        bs->dev = dev;
-                        bs->timestamp = timestamp;
-                        if (/*FIXME*/ true) {
-                            bs->type  = SAMPLE_PRESSURE;
-                            bs->value = value / 100.0f;  // scale to hPa
-                        } else {
-                            bs->type  = SAMPLE_TEMPERATURE;
-                            bs->value = value; // already degC
-                        }
-                        if (measurements_queue->send_complete(bs) != pdTRUE) {
-                            commit_fail++;
-                        }
-                    }
+                }
+                if (!prs_measurement) {
+                    dev->last_temperature = value;
+                    continue;
+                }
+                // a sample is ready
+                baroSample_t *bs = nullptr;
+                size_t sz = sizeof(baroSample_t);
+                if (measurements_queue->send_acquire((void **)&bs, sz, 0) != pdTRUE) {
+                    measurements_queue_full++;
+                    continue;
+                    // TOGGLE(TRIGGER2);
+                }
+                bs->dev = dev;
+                bs->timestamp = timestamp;
+                if (prs_measurement) {
+                    bs->type  = SAMPLE_PRESSURE;
+                    bs->value = value / 100.0f;  // scale to hPa
+                // } else {
+                //     bs->type  = SAMPLE_TEMPERATURE;
+                //     bs->value = value; // already degC
+                }
+                if (measurements_queue->send_complete(bs) != pdTRUE) {
+                    commit_fail++;
                 }
             }
             xSemaphoreGive(i2cMutex);

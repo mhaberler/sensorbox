@@ -233,7 +233,7 @@ void setup() {
             return;
         if (n > 2)
             return;
-        int16_t ret = dps368_setup(n);
+        int16_t ret = dps368_setup(n); // FIXME
         log_i("reinit %d: %d", n, ret);
     });
 

@@ -88,6 +88,7 @@ typedef struct  {
     float start_time; // time when conversion started
     float temp_conversion_time;
     float prs_conversion_time;
+    float last_temperature;
     uint32_t initial_alt_values;
     dps_mode_t dps_mode;
 
