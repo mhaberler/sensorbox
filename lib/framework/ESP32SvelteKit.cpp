@@ -134,7 +134,9 @@ void ESP32SvelteKit::begin()
     MDNS.begin(_wifiSettingsService.getHostname().c_str());
     MDNS.setInstanceName(_appName);
     MDNS.addService("http", "tcp", 80);
+    MDNS.addService("https", "tcp", 443);
     MDNS.addService("ws", "tcp", 80);
+    MDNS.addService("wss", "tcp", 443);
     MDNS.addServiceTxt("http", "tcp", "Firmware Version", APP_VERSION);
 
 #ifdef SERIAL_INFO

@@ -19,6 +19,7 @@
 #include "settings.hpp"
 #include "fmicro.h"
 #include "pindefs.h"
+#include <mbedtls/debug.h>
 //#include "broker.hpp"
 #include <PicoMQTT.h>
 extern PicoMQTT::Server mqtt;
@@ -192,6 +193,7 @@ void setup() {
     i2c_scan(Wire1);
 #endif
 #endif
+    // mbedtls_debug_set_threshold(4);
     // start ESP32-SvelteKit
     esp32sveltekit.begin();
 
