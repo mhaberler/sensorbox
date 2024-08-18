@@ -31,7 +31,7 @@ extern PicoMQTT::Server mqtt;
 
 extern EventGroupHandle_t eventGroup;
 
-PsychicHttpServer server;
+extern PsychicHttpServer server;
 
 ESP32SvelteKit esp32sveltekit(&server, 120);
 
@@ -195,11 +195,18 @@ void setup() {
 #endif
     // mbedtls_debug_set_threshold(4);
     // start ESP32-SvelteKit
+    log_i("heap pre esp32sveltekit.begin: %u", ESP.getFreeHeap());
+
     esp32sveltekit.begin();
+    log_i("heap post esp32sveltekit.begin: %u", ESP.getFreeHeap());
 
     setup_queues();
+    log_i("heap post setup_queues: %u", ESP.getFreeHeap());
+
     settings_setup();
+    log_i("heap post settings_setup: %u", ESP.getFreeHeap());
     broker_setup();
+    log_i("heap post broker_setup: %u", ESP.getFreeHeap());
 
     // load the initial light settings
     lightStateService.begin();
@@ -211,13 +218,19 @@ void setup() {
     dem_setup(SD, "/dem");
     printDems();
 #endif
+    log_i("heap post DEM setup: %u", ESP.getFreeHeap());
+
     sensor_setup();
+    log_i("heap post sensor_setup: %u", ESP.getFreeHeap());
+
     BaseType_t ret = run_i2c_task();
     if (ret != pdPASS) {
         log_e("failed to create i2c_task task: %d", ret);
     } else {
         log_i("i2c_task task created");
     }
+    log_i("heap post run_i2c_task: %u", ESP.getFreeHeap());
+
     mqtt.begin();
 
     mqtt.subscribe("system/interval", [](const char * topic, const char * payload) {
@@ -240,6 +253,8 @@ void setup() {
         int16_t ret = dps368_setup(n); // FIXME
         log_i("reinit %d: %d", n, ret);
     });
+
+    log_i("heap at setup end: %u", ESP.getFreeHeap());
 
     RUNTICKER(internal);
     RUNTICKER(deadman);

@@ -4,24 +4,26 @@
 #include <PicoMQTT.h>
 #include <PsychicHttp.h>
 
-#define CONFIG_ESP_HTTPS_SERVER_ENABLE 1
+// #define CONFIG_ESP_HTTPS_SERVER_ENABLE 1
+#include <PicoMQTT.h>
 #include <PsychicHttpsServer.h>
+#include <PsychicWebSocketProxy.h>
 
-#include "server.h"
-#include "shifting_buffer_proxy.h"
+// define a PsychicWebSocketProxy::Server object, which will connect
+// the async PsychicHTTP server with the synchronous PicoMQTT library.
+PsychicWebSocketProxy::Server websocket_handler;
+
+// Initialize a PicoMQTT::Server using the PsychicWebSocketProxy::Server
+// object as the server to use.
+PicoMQTT::Server mqtt(websocket_handler);
 
 String server_cert;
 String server_key;
-PsychicHttpsServer httpsServer;
-
-PsychicWebSocketProxy::Server websocket_handler([] { return new PsychicWebSocketProxy::ShiftingBufferProxy<1024>(); });
-
-::WiFiServer tcp_server(1883);
-PicoMQTT::Server mqtt(tcp_server, websocket_handler);
-// PicoMQTT::Server mqtt(websocket_handler);
+PsychicHttpsServer server;
 
 void broker_setup() {
-    httpsServer.config.max_uri_handlers = 20;  
+    server.config.max_uri_handlers = 20;
+    server.ssl_config.httpd.max_open_sockets = 3;
     {
         LittleFS.begin();
         File fp = LittleFS.open("/server.crt");
@@ -36,13 +38,19 @@ void broker_setup() {
             fp.close();
         }
     }
-    log_e("crt='%s' key='%s'", server_cert.c_str(), server_key.c_str());
-    httpsServer.listen(443, server_cert.c_str(), server_key.c_str());
+    // log_e("crt='%s' key='%s'", server_cert.c_str(), server_key.c_str());
 
+    // Some strict clients require that the websocket subprotocol is mqtt.
+    // NOTE: The subprotocol must be set *before* attaching the handler to a
+    // server path using server.on(...)
     websocket_handler.setSubprotocol("mqtt");
 
-    httpsServer.on("/mqtt", &websocket_handler);
-    httpsServer.on("/hello", [](PsychicRequest * request) {
+    server.listen(443, server_cert.c_str(), server_key.c_str());
+
+    // bind the PsychicWebSocketProxy::Server to an url like a websocket handler
+    server.on("/mqtt", &websocket_handler);
+
+    server.on("/hello", [](PsychicRequest * request) {
         return request->reply(200, "text/plain", "Hello world!");
     });
 
